@@ -1,0 +1,25 @@
+// Lit, opaque, one colour: the disc's silver and the detailed case's plastic, in your hands.
+// gltfio's lit ubershader on these (the open case, the disc held close) held the Onn's Mali-G31 to ~12 fps.
+// Compile: matc -p mobile -a opengl -o android/app/src/main/assets/hand_solid.filamat work/materials/hand_solid.mat
+material {
+    name : HandSolid,
+    shadingModel : lit,
+    blending : opaque,
+    doubleSided : true,
+    specularAntiAliasing : false,
+    parameters : [
+        { type : float4, name : baseColorFactor },
+        { type : float, name : metallicFactor },
+        { type : float, name : roughnessFactor }
+    ],
+    variantFilter : [ skinning, shadowReceiver, vsm, fog, stereo, ssr ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor = materialParams.baseColorFactor;
+        material.metallic = materialParams.metallicFactor;
+        material.roughness = materialParams.roughnessFactor;
+    }
+}

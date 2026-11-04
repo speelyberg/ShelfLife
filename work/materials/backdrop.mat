@@ -1,0 +1,23 @@
+// The blurred room behind a case in your hands: one texture, full screen, nothing else.
+// The gltfio ubershader cost the Onn's Mali-G31 most of a frame for this one quad.
+// Compile: matc -p mobile -a opengl -o android/app/src/main/assets/backdrop.filamat work/materials/backdrop.mat
+material {
+    name : Backdrop,
+    shadingModel : unlit,
+    blending : opaque,
+    depthWrite : false,
+    depthCulling : false,
+    culling : none,
+    requires : [ uv0 ],
+    parameters : [
+        { type : sampler2d, name : image, precision : medium }
+    ],
+    variantFilter : [ skinning, shadowReceiver, vsm, directionalLighting, dynamicLighting, fog, stereo, ssr ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        material.baseColor = texture(materialParams_image, getUV0());
+    }
+}

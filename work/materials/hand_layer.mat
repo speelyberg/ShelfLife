@@ -1,0 +1,24 @@
+// Unlit, see-through, one texture: the disc's printed label and its rainbow over the lit silver (see
+// hand_solid.mat). Lit, these two layers cost the Onn's Mali-G31 nearly as much again as the silver under them.
+// Compile: matc -p mobile -a opengl -o android/app/src/main/assets/hand_layer.filamat work/materials/hand_layer.mat
+material {
+    name : HandLayer,
+    shadingModel : unlit,
+    blending : transparent,
+    doubleSided : true,
+    requires : [ uv0 ],
+    parameters : [
+        { type : sampler2d, name : baseColorMap, precision : medium },
+        { type : float4, name : baseColorFactor }
+    ],
+    variantFilter : [ skinning, shadowReceiver, vsm, fog, stereo, ssr ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        // gltfio's shaders read glTF's V the other way up.
+        float2 uv = float2(getUV0().x, 1.0 - getUV0().y);
+        material.baseColor = texture(materialParams_baseColorMap, uv) * materialParams.baseColorFactor;
+    }
+}

@@ -1,0 +1,17 @@
+// Depth only: the case's plastic while the baked insert clip shows it (InsertClip in RoomRenderer.kt),
+// so the live disc label and covers still go behind the lid. No colour, so next to no shading cost.
+// Compile: matc -p mobile -a opengl -o android/app/src/main/assets/hand_depth.filamat work/materials/hand_depth.mat
+material {
+    name : HandDepth,
+    shadingModel : unlit,
+    blending : opaque,
+    colorWrite : false,
+    doubleSided : true,
+    variantFilter : [ skinning, shadowReceiver, vsm, fog, stereo, ssr ]
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+    }
+}
