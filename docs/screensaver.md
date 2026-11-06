@@ -31,6 +31,8 @@ ShelfLife's Settings → **TV screensaver**:
 | Scanlines | A dark line every third pixel row, like a tube TV | Off |
 | Corner flash | The screen flashes white when the logo lands in a corner (at most every 3 s) | On |
 
+The room's TV follows the same settings while no disc is in: the logo, glow, scanlines and flash stay on the TV's picture. Changes show straight away.
+
 The colour follows **DVD screensaver** under Room: Colorful, Grey or White. If that's set to Off, the TV screensaver uses Colorful, since choosing a screensaver means you want it.
 
 This project was made with help from Claude Code and Codex.

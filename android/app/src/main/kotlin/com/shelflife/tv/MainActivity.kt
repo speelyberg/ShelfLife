@@ -390,6 +390,7 @@ class MainActivity : ComponentActivity() {
         // The idle DVD-player screen on the TV whenever no disc is in and nothing covers the room.
         screensaver = Screensaver(this, { room.tvQuad }) { discMovie == null && loading.value == null && warningCard.value == null && room.shelf.held == null }
         screensaver.mode = runCatching { Screensaver.Mode.valueOf(prefs.getString("screensaver", "COLORFUL")!!) }.getOrDefault(Screensaver.Mode.COLORFUL)
+        screensaver.use(DvdDream.Settings(this))
         screensaver.setLogo(Extras.bitmap(Extras.DVD_VIDEO_LOGO))
         screensaverHolder.addView(screensaver.view)
         disc = DiscPlayer(this, playerView, discEvents)
@@ -747,13 +748,14 @@ class MainActivity : ComponentActivity() {
                 listOf("Off", "Low", "Medium", "High")[q.sheen]) to { setQuality(q.copy(sheen = (q.sheen + 1) % 4)) },
         ))
         val dream = DvdDream.Settings(this)
-        section("TV screensaver", "The bouncing DVD logo as your TV's own screensaver, full screen. Its colour follows DVD screensaver, under Room.", listOf(
+        fun dreamed() { screensaver.use(dream); refresh() }
+        section("TV screensaver", "The bouncing DVD logo as your TV's own screensaver, full screen, and on the room's TV. Its colour follows DVD screensaver, under Room.", listOf(
             SettingRow("Use as screensaver", "Opens the TV's screensaver settings: choose ShelfLife DVD there. If the TV has no such page, see docs/screensaver.md.", "Open") to { openDreamSettings() },
-            SettingRow("Speed", "How fast the logo drifts across the screen.", dream.speeds[dream.speed].first) to { dream.speed = (dream.speed + 1) % dream.speeds.size; refresh() },
-            SettingRow("Logo size", "How big the logo is, against the screen.", dream.sizes[dream.size].first) to { dream.size = (dream.size + 1) % dream.sizes.size; refresh() },
-            SettingRow("Glow", "A soft glow around the logo, in its colour.", onOff(dream.glow)) to { dream.glow = !dream.glow; refresh() },
-            SettingRow("Scanlines", "Fine dark lines across the picture, like an old tube TV.", onOff(dream.scanlines)) to { dream.scanlines = !dream.scanlines; refresh() },
-            SettingRow("Corner flash", "The screen flashes when the logo lands in a corner.", onOff(dream.cornerFlash)) to { dream.cornerFlash = !dream.cornerFlash; refresh() },
+            SettingRow("Speed", "How fast the logo drifts across the screen.", dream.speeds[dream.speed].first) to { dream.speed = (dream.speed + 1) % dream.speeds.size; dreamed() },
+            SettingRow("Logo size", "How big the logo is, against the screen.", dream.sizes[dream.size].first) to { dream.size = (dream.size + 1) % dream.sizes.size; dreamed() },
+            SettingRow("Glow", "A soft glow around the logo, in its colour.", onOff(dream.glow)) to { dream.glow = !dream.glow; dreamed() },
+            SettingRow("Scanlines", "Fine dark lines across the picture, like an old tube TV.", onOff(dream.scanlines)) to { dream.scanlines = !dream.scanlines; dreamed() },
+            SettingRow("Corner flash", "The screen flashes when the logo lands in a corner.", onOff(dream.cornerFlash)) to { dream.cornerFlash = !dream.cornerFlash; dreamed() },
         ))
         section("Before the film", "The disc's start-up ritual: QuickPlay, warnings, previews, the opener.", listOf(
             SettingRow("Warning card", "The anti-spoiler warning before a film plays from the start.", onOff(fbiOn)) to { flip("fbiWarning", fbiOn) },

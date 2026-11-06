@@ -29,8 +29,22 @@ class Screensaver(context: Context, private val quad: () -> FloatArray?, private
     /** Logo width, as a share of the picture's, and how fast it drifts (picture widths a second). */
     var logoSize = 0.2f
     var speed = 0.1f
-    /** Called when the logo reaches a corner (both walls at once, or near enough to look it). */
-    var onCorner: (() -> Unit)? = null
+    /** CRT scanlines over the picture: a dark line every third screen row. */
+    var scanlines = false
+        set(value) { field = value; effects.invalidate() }
+    /** The picture flashes white when the logo reaches a corner (both walls at once, or near enough to look it). */
+    var cornerFlash = false
+    private var lastFlash = 0L
+    private val flash = android.animation.ValueAnimator.ofFloat(0.7f, 0f).apply {
+        duration = 1_000
+        addUpdateListener { effects.flash = it.animatedValue as Float; effects.invalidate() }
+    }
+
+    /** The effects set in Settings → TV screensaver; the room's TV and [DvdDream] both follow them. */
+    fun use(s: DvdDream.Settings) {
+        speed = s.speeds[s.speed].second; logoSize = s.sizes[s.size].second
+        glow = s.glow; scanlines = s.scanlines; cornerFlash = s.cornerFlash
+    }
     /**
      * A soft glow behind the logo, in its colour: a blurred copy of the logo, made once on the CPU.
      * (A live RenderEffect blur on the moving view left smeared trails on the Onn's Mali GPU.)
@@ -55,8 +69,9 @@ class Screensaver(context: Context, private val quad: () -> FloatArray?, private
         scaleType = ImageView.ScaleType.FIT_XY; alpha = 0.92f
         layoutParams = FrameLayout.LayoutParams(LOGO_W, LOGO_H)
     }
+    private val effects = Effects(context)
     /** Full-screen; MainActivity adds it above the 3D view, under the overlay. */
-    val view = FrameLayout(context).apply { visibility = View.GONE; addView(logo) }
+    val view = FrameLayout(context).apply { visibility = View.GONE; addView(logo); addView(effects) }
 
     private val colors = intArrayOf(0xFF3D7BFF.toInt(), 0xFFFF3D9A.toInt(), 0xFF3DDC84.toInt(), 0xFFFFD23D.toInt(),
         0xFFFF7A3D.toInt(), 0xFFA45CFF.toInt(), 0xFF3DE0FF.toInt(), 0xFFFF4040.toInt())
@@ -109,9 +124,12 @@ class Screensaver(context: Context, private val quad: () -> FloatArray?, private
         val hit = hitX || hitY
         // A corner: both walls this frame, or the other wall within a hair (the eye can't tell).
         val near = 0.012f
-        if ((hitX && (y < near || y > maxY - near)) || (hitY && (x < near || x > maxX - near))) onCorner?.invoke()
+        val corner = (hitX && (y < near || y > maxY - near)) || (hitY && (x < near || x > maxX - near))
+        // At most one flash every few seconds.
+        if (corner && cornerFlash && onScreen && System.currentTimeMillis() - lastFlash > 3_000) { lastFlash = System.currentTimeMillis(); flash.start() }
         if (hit && mode == Mode.COLORFUL) { colorIndex = (colorIndex + 1 + (0 until colors.size - 1).random()) % colors.size; if (onScreen) tint(colors[colorIndex]) }
-        if (!onScreen) { if (logo.visibility != View.INVISIBLE) logo.visibility = View.INVISIBLE; return }
+        if (!onScreen) { if (logo.visibility != View.INVISIBLE) logo.visibility = View.INVISIBLE; effects.at(null); return }
+        effects.at(quad)
         if (logo.visibility != View.VISIBLE) { logo.visibility = View.VISIBLE; if (mode == Mode.COLORFUL) tint(colors[colorIndex]) }
         // Logo pixels → picture → screen (perspective, from the TV's corners in the last 3D frame).
         tvMatrix.setPolyToPoly(src, 0, quad!!, 0, 4)
@@ -154,6 +172,38 @@ class Screensaver(context: Context, private val quad: () -> FloatArray?, private
         return android.graphics.Bitmap.createBitmap(a, ww, hh, android.graphics.Bitmap.Config.ARGB_8888)
     }
     private var hasLogo = false
+
+    /**
+     * Scanlines and the corner flash, clipped to the picture's corners on screen (the room's TV, or the
+     * whole screen). Redrawn only when the picture moves or the flash fades.
+     */
+    private inner class Effects(context: Context) : View(context) {
+        private var quad: FloatArray? = null
+        var flash = 0f
+        private val path = android.graphics.Path()
+        private val line = android.graphics.Paint().apply { color = Color.argb(90, 0, 0, 0) }
+        private val white = android.graphics.Paint().apply { color = Color.WHITE }
+
+        fun at(q: FloatArray?) {
+            if (q == null && quad == null || q != null && quad?.contentEquals(q) == true) return
+            quad = q?.copyOf()
+            if (scanlines || flash > 0f) invalidate()
+        }
+
+        override fun onDraw(canvas: android.graphics.Canvas) {
+            val q = quad ?: return
+            if (!scanlines && flash <= 0f) return
+            path.rewind(); path.moveTo(q[0], q[1]); for (i in 1..3) path.lineTo(q[i * 2], q[i * 2 + 1]); path.close()
+            canvas.save(); canvas.clipPath(path)
+            if (scanlines) {
+                val bottom = minOf(height.toFloat(), maxOf(q[1], q[3], q[5], q[7]))
+                var y = (maxOf(0f, minOf(q[1], q[3], q[5], q[7])) / 3).toInt() * 3f
+                while (y < bottom) { canvas.drawRect(0f, y, width.toFloat(), y + 1f, line); y += 3f }
+            }
+            if (flash > 0f) { white.alpha = (flash * 255).toInt(); canvas.drawPaint(white) }
+            canvas.restore()
+        }
+    }
 
     private fun tint(color: Int) { currentTint = color; logo.setColorFilter(color, PorterDuff.Mode.SRC_IN); glowView?.setColorFilter(color, PorterDuff.Mode.SRC_IN) }
 }
